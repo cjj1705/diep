@@ -1,19 +1,34 @@
 using UnityEngine;
 using Mirror;
+using System.Collections;
 
 public class Player : NetworkBehaviour
 {
-    private Vector2 dir;
-    private float moveSpeed = 2f;
-
-    private float attackDelay = 0.5f;
-    private float curAttackTime;
-
+    // 1초당 체력 재생
+    private int healthRegen = 0;
+    // 최대 체력
+    private int maxHealth = 20;
+    // 몸통박치기 데미지
+    private int bodyDamage = 1;
+    // 총알 속도
+    private float bulletSpeed = 4f;
+    // 총알 관통력 : 1당 1개의 오브젝트를 통과
+    private int bulletPenetration = 0;
+    // 총알 데미지
     private int bulletDamage = 1;
-    private int bodyDamage;
+    // 공격 딜레이
+    private int reload;
+    // 이동 속도
+    private float movementSpeed = 2f;
 
-    private int maxHp = 10;
+
+
+    // 이동 방향
+    private Vector2 moveDir;
+
+    private float bulletLifeTime = 2f;
     private int curHp;
+    private float curAttackTime;
 
     [SerializeField] private GameObject bullet;
     [SerializeField] private Sprite otherPlayerSprite;
@@ -23,7 +38,7 @@ public class Player : NetworkBehaviour
 
     private void Awake()
     {
-        curHp = maxHp;
+        curHp = maxHealth;
 
         weapon = transform.GetChild(0).gameObject;
         shootPoint = transform.GetChild(0).GetChild(0).transform;
@@ -37,6 +52,8 @@ public class Player : NetworkBehaviour
         {
             CmdUpdateOtherPlayerSprites();
         }
+
+        StartCoroutine(RegenHealth(healthRegen));
     }
 
     private void Update()
@@ -52,12 +69,26 @@ public class Player : NetworkBehaviour
         }
     }
 
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        // 충돌한 객체가 플레이어인지 확인
+        Player otherPlayer = collision.gameObject.GetComponent<Player>();
+        if (otherPlayer != null)
+        {
+            // 서로에게 데미지를 입힘
+            if (isServer)
+            {
+                TakeDamage(bodyDamage); // 서버에서만 데미지를 입힘
+            }
+        }
+    }
+
     private void Move()
     {
-        dir.x = Input.GetAxis("Horizontal");
-        dir.y = Input.GetAxis("Vertical");
+        moveDir.x = Input.GetAxis("Horizontal");
+        moveDir.y = Input.GetAxis("Vertical");
 
-        CmdMove(dir);
+        CmdMove(moveDir);
     }
 
     [Command]
@@ -69,7 +100,7 @@ public class Player : NetworkBehaviour
     [ClientRpc]
     private void RpcMove(Vector2 direction)
     {
-        transform.Translate(direction * moveSpeed * Time.deltaTime);
+        transform.Translate(direction * movementSpeed * Time.deltaTime);
     }
 
     private void Rotate()
@@ -101,7 +132,7 @@ public class Player : NetworkBehaviour
         {
             if (Time.time > curAttackTime)
             {
-                curAttackTime = Time.time + attackDelay;
+                curAttackTime = Time.time + 1f - (reload / 15f);
                 CmdShoot(shootPoint.position, Camera.main.ScreenToWorldPoint(Input.mousePosition));
             }
         }
@@ -112,15 +143,15 @@ public class Player : NetworkBehaviour
     {
         GameObject curBullet = Instantiate(bullet, bulletSpawnPosition, Quaternion.identity);
         Vector2 lookDir = targetPosition - bulletSpawnPosition;
-        curBullet.GetComponent<Bullet>().Initialize(lookDir.normalized, 3f, 2f, bulletDamage, isLocalPlayer, (int)netId);
+        curBullet.GetComponent<Bullet>().Initialize(lookDir.normalized, bulletSpeed, bulletPenetration, bulletDamage, bulletLifeTime, isLocalPlayer, (int)netId);
         NetworkServer.Spawn(curBullet);
-        RpcSetUpBullet(curBullet, lookDir.normalized, 3f, 2f);
+        RpcSetUpBullet(curBullet, lookDir.normalized, bulletSpeed, bulletPenetration, bulletDamage, bulletLifeTime);
     }
 
     [ClientRpc]
-    private void RpcSetUpBullet(GameObject bulletObject, Vector2 direction, float speed, float lifeTime)
+    private void RpcSetUpBullet(GameObject bulletObject, Vector2 direction, float speed, int pernetration, int damage, float lifeTime)
     {
-        bulletObject.GetComponent<Bullet>().Initialize(direction, speed, lifeTime, bulletDamage, isLocalPlayer, (int)netId);
+        bulletObject.GetComponent<Bullet>().Initialize(direction, speed, pernetration, damage, lifeTime, isLocalPlayer, (int)netId);
     }
 
     [Server]
@@ -161,5 +192,17 @@ public class Player : NetworkBehaviour
         {
             GetComponent<SpriteRenderer>().sprite = otherPlayerSprite;
         }
+    }
+
+    private IEnumerator RegenHealth(int value)
+    {
+        yield return new WaitForSeconds(5f);
+        curHp += value;
+        if (curHp > maxHealth)
+        {
+            curHp = maxHealth;
+        }
+
+        StartCoroutine(RegenHealth(healthRegen));
     }
 }
