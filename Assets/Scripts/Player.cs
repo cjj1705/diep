@@ -1,34 +1,49 @@
 using UnityEngine;
 using Mirror;
 using System.Collections;
+using System.Collections.Generic;
+
+public enum CharacterStat
+{
+    // 1초당 체력 재생
+    HealthRegen,
+    // 최대 체력
+    MaxHealth,
+    // 몸통박치기 데미지
+    BodyDamage,
+    // 총알 속도
+    BulletSpeed,
+    // 총알 관통력 : 1당 1개의 오브젝트를 통과
+    BulletPenetration,
+    // 총알 데미지
+    BulletDamage,
+    // 공격 딜레이
+    Reload,
+    // 이동 속도
+    MovementSpeed
+}
 
 public class Player : NetworkBehaviour
 {
-    // 1초당 체력 재생
-    private int healthRegen = 0;
-    // 최대 체력
-    private int maxHealth = 20;
-    // 몸통박치기 데미지
-    private int bodyDamage = 1;
-    // 총알 속도
-    private float bulletSpeed = 4f;
-    // 총알 관통력 : 1당 1개의 오브젝트를 통과
-    private int bulletPenetration = 0;
-    // 총알 데미지
-    private int bulletDamage = 1;
-    // 공격 딜레이
-    private int reload;
-    // 이동 속도
-    private float movementSpeed = 2f;
+    private Dictionary<CharacterStat, float> Stats;
 
-
+    // 레벨
+    private int level;
+    // 다음 레벨에 도달하기 위한 경험치량
+    private int exp = 10;
+    // 현재 경험치량
+    private int curExp = 0;
+    // 스탯을 찍을 수 있는 횟수
+    private int statPoint = 0;
 
     // 이동 방향
     private Vector2 moveDir;
 
-    private float bulletLifeTime = 2f;
-    private int curHp;
+    // 현재 체력
+    private float curHp;
     private float curAttackTime;
+
+    private float bulletLifeTime = 2f;
 
     [SerializeField] private GameObject bullet;
     [SerializeField] private Sprite otherPlayerSprite;
@@ -38,7 +53,18 @@ public class Player : NetworkBehaviour
 
     private void Awake()
     {
-        curHp = maxHealth;
+        Stats = new Dictionary<CharacterStat, float>();
+
+        Stats[CharacterStat.HealthRegen] =  0f;
+        Stats[CharacterStat.MaxHealth] = 10f;
+        Stats[CharacterStat.BodyDamage] = 1f;
+        Stats[CharacterStat.BulletSpeed] = 4f;
+        Stats[CharacterStat.BulletPenetration] = 0f;
+        Stats[CharacterStat.BulletDamage] = 1f;
+        Stats[CharacterStat.Reload] = 0f;
+        Stats[CharacterStat.MovementSpeed] = 3f;
+
+        curHp = Stats[CharacterStat.MaxHealth];
 
         weapon = transform.GetChild(0).gameObject;
         shootPoint = transform.GetChild(0).GetChild(0).transform;
@@ -53,7 +79,7 @@ public class Player : NetworkBehaviour
             CmdUpdateOtherPlayerSprites();
         }
 
-        StartCoroutine(RegenHealth(healthRegen));
+        StartCoroutine(RegenHealth(Stats[CharacterStat.HealthRegen]));
     }
 
     private void Update()
@@ -78,7 +104,7 @@ public class Player : NetworkBehaviour
             // 서로에게 데미지를 입힘
             if (isServer)
             {
-                TakeDamage(bodyDamage); // 서버에서만 데미지를 입힘
+                TakeDamage(Stats[CharacterStat.BodyDamage]); // 서버에서만 데미지를 입힘
             }
         }
     }
@@ -100,7 +126,7 @@ public class Player : NetworkBehaviour
     [ClientRpc]
     private void RpcMove(Vector2 direction)
     {
-        transform.Translate(direction * movementSpeed * Time.deltaTime);
+        transform.Translate(direction * Stats[CharacterStat.MovementSpeed] * Time.deltaTime);
     }
 
     private void Rotate()
@@ -132,7 +158,7 @@ public class Player : NetworkBehaviour
         {
             if (Time.time > curAttackTime)
             {
-                curAttackTime = Time.time + 1f - (reload / 15f);
+                curAttackTime = Time.time + 1f - (Stats[CharacterStat.Reload] / 15f);
                 CmdShoot(shootPoint.position, Camera.main.ScreenToWorldPoint(Input.mousePosition));
             }
         }
@@ -143,19 +169,23 @@ public class Player : NetworkBehaviour
     {
         GameObject curBullet = Instantiate(bullet, bulletSpawnPosition, Quaternion.identity);
         Vector2 lookDir = targetPosition - bulletSpawnPosition;
-        curBullet.GetComponent<Bullet>().Initialize(lookDir.normalized, bulletSpeed, bulletPenetration, bulletDamage, bulletLifeTime, isLocalPlayer, (int)netId);
+        curBullet.GetComponent<Bullet>().Initialize(lookDir.normalized, 
+            Stats[CharacterStat.BulletSpeed], Stats[CharacterStat.BulletPenetration], Stats[CharacterStat.BulletDamage], 
+            bulletLifeTime, isLocalPlayer, (int)netId);
         NetworkServer.Spawn(curBullet);
-        RpcSetUpBullet(curBullet, lookDir.normalized, bulletSpeed, bulletPenetration, bulletDamage, bulletLifeTime);
+        RpcSetUpBullet(curBullet, lookDir.normalized,
+            Stats[CharacterStat.BulletSpeed], Stats[CharacterStat.BulletPenetration], Stats[CharacterStat.BulletDamage], 
+            bulletLifeTime);
     }
 
     [ClientRpc]
-    private void RpcSetUpBullet(GameObject bulletObject, Vector2 direction, float speed, int pernetration, int damage, float lifeTime)
+    private void RpcSetUpBullet(GameObject bulletObject, Vector2 direction, float speed, float pernetration, float damage, float lifeTime)
     {
         bulletObject.GetComponent<Bullet>().Initialize(direction, speed, pernetration, damage, lifeTime, isLocalPlayer, (int)netId);
     }
 
     [Server]
-    public void TakeDamage(int amount)
+    public void TakeDamage(float amount)
     {
         curHp -= amount;
         if (curHp <= 0)
@@ -194,15 +224,33 @@ public class Player : NetworkBehaviour
         }
     }
 
-    private IEnumerator RegenHealth(int value)
+    private IEnumerator RegenHealth(float value)
     {
         yield return new WaitForSeconds(5f);
         curHp += value;
-        if (curHp > maxHealth)
+        if (curHp > Stats[CharacterStat.MaxHealth])
         {
-            curHp = maxHealth;
+            curHp = Stats[CharacterStat.MaxHealth];
         }
 
-        StartCoroutine(RegenHealth(healthRegen));
+        StartCoroutine(RegenHealth(Stats[CharacterStat.HealthRegen]));
+    }
+
+    private void LevelUp()
+    {
+        statPoint++;
+        exp = level * 10;
+
+        // TODO : 스탯찍는 UI 띄우기
+        // 스탯 버튼을 눌러서 스탯을 찍었을 때, 남은 스탯포인트가 없으면 UI 치우기
+    }
+
+    private void GainExp(int _exp)
+    {
+        curExp += _exp;
+        if (curExp > exp)
+        {
+            LevelUp();
+        }
     }
 }

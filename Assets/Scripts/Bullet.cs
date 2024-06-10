@@ -5,8 +5,8 @@ public class Bullet : NetworkBehaviour
 {
     private Vector2 direction;
     private float speed;
-    private int damage;
-    private int pernetration;
+    private float damage;
+    private float pernetration;
     private float lifeTime;
     private int ownerId;
 
@@ -15,7 +15,7 @@ public class Bullet : NetworkBehaviour
     [SerializeField] private Sprite otherBulletSprite;
 
     // Update 메서드로 인해 초기화가 여러 번 호출되는 것을 방지하기 위해 사용됩니다.
-    public void Initialize(Vector2 _direction, float _speed, int _pernetration, int _damage, float _lifeTime, bool _isLocalPlayer, int _netId)
+    public void Initialize(Vector2 _direction, float _speed, float _pernetration, float _damage, float _lifeTime, bool _isLocalPlayer, int _netId)
     {
         if (!initialized)
         {
