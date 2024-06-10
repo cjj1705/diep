@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using Mirror;
 using System.Collections;
 using System.Collections.Generic;
@@ -40,7 +41,7 @@ public class Player : NetworkBehaviour
     private Vector2 moveDir;
 
     // 현재 체력
-    private float curHp;
+    [SyncVar] private float curHp;
     private float curAttackTime;
 
     private float bulletLifeTime = 2f;
@@ -51,11 +52,18 @@ public class Player : NetworkBehaviour
     private GameObject weapon;
     private Transform shootPoint;
 
+    [SerializeField] private Slider hpBar;
+
+    public override void OnStartServer()
+    {
+        SyncHpBar();
+    }
+
     private void Awake()
     {
         Stats = new Dictionary<CharacterStat, float>();
 
-        Stats[CharacterStat.HealthRegen] =  0f;
+        Stats[CharacterStat.HealthRegen] = 0f;
         Stats[CharacterStat.MaxHealth] = 10f;
         Stats[CharacterStat.BodyDamage] = 1f;
         Stats[CharacterStat.BulletSpeed] = 4f;
@@ -73,13 +81,13 @@ public class Player : NetworkBehaviour
     private void Start()
     {
         curAttackTime = Time.time;
+        SyncHpBar();
 
         if (isLocalPlayer)
         {
             CmdUpdateOtherPlayerSprites();
+            StartCoroutine(RegenHealth(Stats[CharacterStat.HealthRegen]));
         }
-
-        StartCoroutine(RegenHealth(Stats[CharacterStat.HealthRegen]));
     }
 
     private void Update()
@@ -99,27 +107,24 @@ public class Player : NetworkBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            // 충돌한 객체가 플레이어인지 확인
             Player otherPlayer = collision.gameObject.GetComponent<Player>();
             if (otherPlayer != null)
             {
                 // 서로에게 데미지를 입힘
                 if (isServer)
                 {
-                    TakeDamage(Stats[CharacterStat.BodyDamage]); // 서버에서만 데미지를 입힘
+                    TakeDamage(Stats[CharacterStat.BodyDamage]);
                 }
             }
         }
         else if (collision.gameObject.CompareTag("Resource"))
         {
-            // 충돌한 객체가 플레이어인지 확인
             Resource resource = collision.gameObject.GetComponent<Resource>();
             if (resource != null)
             {
-                // 서로에게 데미지를 입힘
                 if (isServer)
                 {
-                    TakeDamage(1f); // 서버에서만 데미지를 입힘
+                    TakeDamage(1f);
                     resource.TakeDamage(this, Stats[CharacterStat.BodyDamage]);
                 }
             }
@@ -204,11 +209,50 @@ public class Player : NetworkBehaviour
     [Server]
     public void TakeDamage(float amount)
     {
-        curHp -= amount;
+        RpcUpdateHealth(curHp - amount);
+    }
+
+    [ClientRpc]
+    private void RpcUpdateHealth(float health)
+    {
+        curHp = health;
+        SyncHpBar();
+
         if (curHp <= 0)
         {
             NetworkServer.Destroy(gameObject);
         }
+        else if (curHp > Stats[CharacterStat.MaxHealth])
+        {
+            curHp = Stats[CharacterStat.MaxHealth];
+        }
+    }
+
+    private IEnumerator RegenHealth(float value)
+    {
+        yield return new WaitForSeconds(5f);
+
+        CmdRegenHealth(value);
+        StartCoroutine(RegenHealth(Stats[CharacterStat.HealthRegen]));
+    }
+
+    [Command]
+    private void CmdRegenHealth(float value)
+    {
+        // 서버에서 체력 회복 처리
+        curHp += value;
+        if (curHp > 100f) // Assuming 100 is the max health
+        {
+            curHp = 100f;
+        }
+
+        // 클라이언트에 동기화
+        RpcUpdateHealth(curHp);
+    }
+
+    private void SyncHpBar()
+    {
+        hpBar.value = curHp / Stats[CharacterStat.MaxHealth];
     }
 
     [Command]
@@ -238,19 +282,8 @@ public class Player : NetworkBehaviour
         if (!isLocalPlayer)
         {
             GetComponent<SpriteRenderer>().sprite = otherPlayerSprite;
+            hpBar.transform.GetChild(1).GetChild(0).GetComponent<Image>().color = Color.red;
         }
-    }
-
-    private IEnumerator RegenHealth(float value)
-    {
-        yield return new WaitForSeconds(5f);
-        curHp += value;
-        if (curHp > Stats[CharacterStat.MaxHealth])
-        {
-            curHp = Stats[CharacterStat.MaxHealth];
-        }
-
-        StartCoroutine(RegenHealth(Stats[CharacterStat.HealthRegen]));
     }
 
     private void LevelUp()
