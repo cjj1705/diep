@@ -6,29 +6,36 @@ public class Bullet : NetworkBehaviour
     private Vector2 direction;
     private float speed;
     private float lifeTime;
+    private int damage;
+    private int ownerId;
 
     private bool initialized = false;
 
+    [SerializeField] private Sprite otherBulletSprite;
+
     // Update 메서드로 인해 초기화가 여러 번 호출되는 것을 방지하기 위해 사용됩니다.
-    public void Initialize(Vector2 _direction, float _speed, float _lifeTime, bool _isLocalPlayer)
+    public void Initialize(Vector2 _direction, float _speed, float _lifeTime, int _damage, bool _isLocalPlayer, int _netId)
     {
         if (!initialized)
         {
             direction = _direction.normalized;
             speed = _speed;
             lifeTime = Time.time + _lifeTime;
-            initialized = true;
+            damage = _damage;
 
             if (_isLocalPlayer)
             {
                 tag = "PlayerBullet";
-                GetComponent<SpriteRenderer>().color = Color.white;
             }
             else
             {
                 tag = "EnemyBullet";
-                GetComponent<SpriteRenderer>().color = Color.red;
+                GetComponent<SpriteRenderer>().sprite = otherBulletSprite;
             }
+
+            ownerId = _netId;
+
+            initialized = true;
         }
     }
 
@@ -49,18 +56,30 @@ public class Bullet : NetworkBehaviour
         }
     }
 
+    [ServerCallback]
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        // 클라이언트에서의 로직 처리
-        if (!isClient)
-            return;
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            
+            Player hitPlayer = collision.gameObject.GetComponent<Player>();
+            if (hitPlayer != null && hitPlayer.netId != ownerId)
+            {
+                hitPlayer.TakeDamage(damage);
+            }
+        }
 
+        RpcDestroyBullet();
+    }
+
+    [ClientRpc]
+    private void RpcDestroyBullet()
+    {
         DestroyBullet();
     }
 
     private void DestroyBullet()
     {
-        // 클라이언트에서의 로직 처리
         if (isServer)
         {
             NetworkServer.Destroy(gameObject);

@@ -9,14 +9,22 @@ public class Player : NetworkBehaviour
     private float attackDelay = 0.5f;
     private float curAttackTime;
 
-    [SerializeField] private GameObject playerBullet;
-    [SerializeField] private GameObject enemyBullet;
+    private int bulletDamage = 1;
+    private int bodyDamage;
+
+    private int maxHp = 10;
+    private int curHp;
+
+    [SerializeField] private GameObject bullet;
+    [SerializeField] private Sprite otherPlayerSprite;
 
     private GameObject weapon;
     private Transform shootPoint;
 
     private void Awake()
     {
+        curHp = maxHp;
+
         weapon = transform.GetChild(0).gameObject;
         shootPoint = transform.GetChild(0).GetChild(0).transform;
     }
@@ -24,6 +32,11 @@ public class Player : NetworkBehaviour
     private void Start()
     {
         curAttackTime = Time.time;
+
+        if (isLocalPlayer)
+        {
+            CmdUpdateOtherPlayerSprites();
+        }
     }
 
     private void Update()
@@ -50,14 +63,12 @@ public class Player : NetworkBehaviour
     [Command]
     private void CmdMove(Vector2 direction)
     {
-        // 서버에서 모든 클라이언트에게 이동 명령을 보냄
         RpcMove(direction);
     }
 
     [ClientRpc]
     private void RpcMove(Vector2 direction)
     {
-        // 클라이언트들이 서버로부터 받은 이동 명령에 따라 플레이어 이동
         transform.Translate(direction * moveSpeed * Time.deltaTime);
     }
 
@@ -72,7 +83,6 @@ public class Player : NetworkBehaviour
     [Command]
     private void CmdRotate(float angle)
     {
-        // 서버에서 모든 클라이언트에게 이동 명령을 보냄
         RpcRotate(angle);
     }
 
@@ -100,18 +110,56 @@ public class Player : NetworkBehaviour
     [Command]
     private void CmdShoot(Vector2 bulletSpawnPosition, Vector2 targetPosition)
     {
-        GameObject curBullet = Instantiate(playerBullet, bulletSpawnPosition, Quaternion.identity);
+        GameObject curBullet = Instantiate(bullet, bulletSpawnPosition, Quaternion.identity);
         Vector2 lookDir = targetPosition - bulletSpawnPosition;
-        curBullet.GetComponent<Bullet>().Initialize(lookDir.normalized, 3f, 2f, isLocalPlayer);
+        curBullet.GetComponent<Bullet>().Initialize(lookDir.normalized, 3f, 2f, bulletDamage, isLocalPlayer, (int)netId);
         NetworkServer.Spawn(curBullet);
         RpcSetUpBullet(curBullet, lookDir.normalized, 3f, 2f);
-        Debug.Log(isLocalPlayer + " : Command");
     }
 
     [ClientRpc]
     private void RpcSetUpBullet(GameObject bulletObject, Vector2 direction, float speed, float lifeTime)
     {
-        bulletObject.GetComponent<Bullet>().Initialize(direction, speed, lifeTime, isLocalPlayer);
-        Debug.Log(isLocalPlayer + " : ClientRpc");
+        bulletObject.GetComponent<Bullet>().Initialize(direction, speed, lifeTime, bulletDamage, isLocalPlayer, (int)netId);
+    }
+
+    [Server]
+    public void TakeDamage(int amount)
+    {
+        curHp -= amount;
+        if (curHp <= 0)
+        {
+            NetworkServer.Destroy(gameObject);
+        }
+    }
+
+    [Command]
+    private void CmdUpdateOtherPlayerSprites()
+    {
+        // 모든 플레이어를 확인하여 스프라이트 변경 명령을 내림
+        foreach (var player in FindObjectsOfType<Player>())
+        {
+            player.RpcChangeSprite();
+        }
+    }
+
+    [ClientRpc]
+    private void RpcChangeSprite()
+    {
+        foreach (var player in FindObjectsOfType<Player>())
+        {
+            if (player != this)
+            {
+                player.ChangeSprite();
+            }
+        }
+    }
+
+    private void ChangeSprite()
+    {
+        if (!isLocalPlayer)
+        {
+            GetComponent<SpriteRenderer>().sprite = otherPlayerSprite;
+        }
     }
 }
