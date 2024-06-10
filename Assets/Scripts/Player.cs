@@ -97,14 +97,31 @@ public class Player : NetworkBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        // 충돌한 객체가 플레이어인지 확인
-        Player otherPlayer = collision.gameObject.GetComponent<Player>();
-        if (otherPlayer != null)
+        if (collision.gameObject.CompareTag("Player"))
         {
-            // 서로에게 데미지를 입힘
-            if (isServer)
+            // 충돌한 객체가 플레이어인지 확인
+            Player otherPlayer = collision.gameObject.GetComponent<Player>();
+            if (otherPlayer != null)
             {
-                TakeDamage(Stats[CharacterStat.BodyDamage]); // 서버에서만 데미지를 입힘
+                // 서로에게 데미지를 입힘
+                if (isServer)
+                {
+                    TakeDamage(Stats[CharacterStat.BodyDamage]); // 서버에서만 데미지를 입힘
+                }
+            }
+        }
+        else if (collision.gameObject.CompareTag("Resource"))
+        {
+            // 충돌한 객체가 플레이어인지 확인
+            Resource resource = collision.gameObject.GetComponent<Resource>();
+            if (resource != null)
+            {
+                // 서로에게 데미지를 입힘
+                if (isServer)
+                {
+                    TakeDamage(1f); // 서버에서만 데미지를 입힘
+                    resource.TakeDamage(this, Stats[CharacterStat.BodyDamage]);
+                }
             }
         }
     }
@@ -169,19 +186,19 @@ public class Player : NetworkBehaviour
     {
         GameObject curBullet = Instantiate(bullet, bulletSpawnPosition, Quaternion.identity);
         Vector2 lookDir = targetPosition - bulletSpawnPosition;
-        curBullet.GetComponent<Bullet>().Initialize(lookDir.normalized, 
+        curBullet.GetComponent<Bullet>().Initialize(this, lookDir.normalized, 
             Stats[CharacterStat.BulletSpeed], Stats[CharacterStat.BulletPenetration], Stats[CharacterStat.BulletDamage], 
-            bulletLifeTime, isLocalPlayer, (int)netId);
+            bulletLifeTime, isLocalPlayer);
         NetworkServer.Spawn(curBullet);
-        RpcSetUpBullet(curBullet, lookDir.normalized,
+        RpcSetUpBullet(curBullet, this, lookDir.normalized,
             Stats[CharacterStat.BulletSpeed], Stats[CharacterStat.BulletPenetration], Stats[CharacterStat.BulletDamage], 
             bulletLifeTime);
     }
 
     [ClientRpc]
-    private void RpcSetUpBullet(GameObject bulletObject, Vector2 direction, float speed, float pernetration, float damage, float lifeTime)
+    private void RpcSetUpBullet(GameObject bulletObject, Player _owner, Vector2 direction, float speed, float pernetration, float damage, float lifeTime)
     {
-        bulletObject.GetComponent<Bullet>().Initialize(direction, speed, pernetration, damage, lifeTime, isLocalPlayer, (int)netId);
+        bulletObject.GetComponent<Bullet>().Initialize(_owner, direction, speed, pernetration, damage, lifeTime, isLocalPlayer);
     }
 
     [Server]
@@ -245,7 +262,7 @@ public class Player : NetworkBehaviour
         // 스탯 버튼을 눌러서 스탯을 찍었을 때, 남은 스탯포인트가 없으면 UI 치우기
     }
 
-    private void GainExp(int _exp)
+    public void GainExp(int _exp)
     {
         curExp += _exp;
         if (curExp > exp)

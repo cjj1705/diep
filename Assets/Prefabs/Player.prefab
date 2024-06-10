@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2738624611413267156}
   - component: {fileID: 4929664388679581746}
   - component: {fileID: 5559920156945398977}
-  - component: {fileID: 8678770094930138661}
+  - component: {fileID: -8183834128961835312}
   - component: {fileID: 7369850337866733492}
   - component: {fileID: 6907169298620987018}
   - component: {fileID: 8161455321088097864}
@@ -108,7 +108,7 @@ MonoBehaviour:
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
---- !u!114 &8678770094930138661
+--- !u!114 &-8183834128961835312
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -117,7 +117,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 890872210418011346}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a553cb17010b2403e8523b558bffbc14, type: 3}
+  m_Script: {fileID: 11500000, guid: 8ff3ba0becae47b8b9381191598957c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   syncDirection: 1
@@ -138,11 +138,10 @@ MonoBehaviour:
   showGizmos: 0
   showOverlay: 0
   overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
-  bufferResetMultiplier: 3
-  changedDetection: 1
-  positionSensitivity: 0.01
+  onlySyncOnChangeCorrectionMultiplier: 2
   rotationSensitivity: 0.01
-  scaleSensitivity: 0.01
+  positionPrecision: 0.01
+  scalePrecision: 0.01
 --- !u!50 &7369850337866733492
 Rigidbody2D:
   serializedVersion: 4
@@ -266,7 +265,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3339931650302287177}
-  - component: {fileID: 3999751453217034903}
+  - component: {fileID: 997786814233664830}
   m_Layer: 0
   m_Name: ShootPoint
   m_TagString: Untagged
@@ -289,7 +288,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 4713034235606964383}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3999751453217034903
+--- !u!114 &997786814233664830
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -298,7 +297,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4123183934751773943}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a553cb17010b2403e8523b558bffbc14, type: 3}
+  m_Script: {fileID: 11500000, guid: 8ff3ba0becae47b8b9381191598957c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   syncDirection: 1
@@ -319,11 +318,10 @@ MonoBehaviour:
   showGizmos: 0
   showOverlay: 0
   overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
-  bufferResetMultiplier: 3
-  changedDetection: 1
-  positionSensitivity: 0.01
+  onlySyncOnChangeCorrectionMultiplier: 2
   rotationSensitivity: 0.01
-  scaleSensitivity: 0.01
+  positionPrecision: 0.01
+  scalePrecision: 0.01
 --- !u!1 &6866863033057209506
 GameObject:
   m_ObjectHideFlags: 0
@@ -334,7 +332,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4713034235606964383}
   - component: {fileID: 8607858749205009586}
-  - component: {fileID: 3152665717154066584}
+  - component: {fileID: 9155847585538558644}
   m_Layer: 0
   m_Name: Weapon
   m_TagString: Untagged
@@ -410,7 +408,7 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &3152665717154066584
+--- !u!114 &9155847585538558644
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -419,7 +417,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 6866863033057209506}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a553cb17010b2403e8523b558bffbc14, type: 3}
+  m_Script: {fileID: 11500000, guid: 8ff3ba0becae47b8b9381191598957c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   syncDirection: 1
@@ -440,8 +438,7 @@ MonoBehaviour:
   showGizmos: 0
   showOverlay: 0
   overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
-  bufferResetMultiplier: 3
-  changedDetection: 1
-  positionSensitivity: 0.01
+  onlySyncOnChangeCorrectionMultiplier: 2
   rotationSensitivity: 0.01
-  scaleSensitivity: 0.01
+  positionPrecision: 0.01
+  scalePrecision: 0.01

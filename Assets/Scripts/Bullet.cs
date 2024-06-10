@@ -3,22 +3,23 @@ using UnityEngine;
 
 public class Bullet : NetworkBehaviour
 {
+    private Player owner;
     private Vector2 direction;
     private float speed;
     private float damage;
     private float pernetration;
     private float lifeTime;
-    private int ownerId;
 
     private bool initialized = false;
 
     [SerializeField] private Sprite otherBulletSprite;
 
     // Update 메서드로 인해 초기화가 여러 번 호출되는 것을 방지하기 위해 사용됩니다.
-    public void Initialize(Vector2 _direction, float _speed, float _pernetration, float _damage, float _lifeTime, bool _isLocalPlayer, int _netId)
+    public void Initialize(Player _owner, Vector2 _direction, float _speed, float _pernetration, float _damage, float _lifeTime, bool _isLocalPlayer)
     {
         if (!initialized)
         {
+            owner = _owner;
             direction = _direction.normalized;
             speed = _speed;
             pernetration = _pernetration;
@@ -34,8 +35,6 @@ public class Bullet : NetworkBehaviour
                 tag = "EnemyBullet";
                 GetComponent<SpriteRenderer>().sprite = otherBulletSprite;
             }
-
-            ownerId = _netId;
 
             initialized = true;
         }
@@ -58,15 +57,22 @@ public class Bullet : NetworkBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            
             Player hitPlayer = collision.gameObject.GetComponent<Player>();
-            if (hitPlayer != null && hitPlayer.netId != ownerId)
+            if (hitPlayer != null && hitPlayer != owner)
             {
                 hitPlayer.TakeDamage(damage);
             }
         }
+        else if (collision.gameObject.CompareTag("Resource"))
+        {
+            Resource resource = collision.gameObject.GetComponent<Resource>();
+            resource.TakeDamage(owner, damage);
+        }
 
-        RpcDestroyBullet();
+        if (--pernetration < 0 || collision.gameObject.CompareTag("Wall"))
+        {
+            RpcDestroyBullet();
+        }
     }
 
     [ClientRpc]
