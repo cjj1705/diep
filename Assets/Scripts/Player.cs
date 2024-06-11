@@ -3,11 +3,12 @@ using UnityEngine.UI;
 using Mirror;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 
 public enum CharacterStat
 {
     // 1초당 체력 재생
-    HealthRegen,
+    HealthRegen = 0,
     // 최대 체력
     MaxHealth,
     // 몸통박치기 데미지
@@ -27,13 +28,15 @@ public enum CharacterStat
 public class Player : NetworkBehaviour
 {
     private Dictionary<CharacterStat, float> Stats;
+    [HideInInspector] public Dictionary<CharacterStat, int> UpgradeStats;
 
     // 레벨
-    private int level;
+    private int level = 1;
     // 다음 레벨에 도달하기 위한 경험치량
     private int exp = 10;
     // 현재 경험치량
     private int curExp = 0;
+    private int totalExp = 0;
     // 스탯을 찍을 수 있는 횟수
     private int statPoint = 0;
 
@@ -53,16 +56,13 @@ public class Player : NetworkBehaviour
     private Transform shootPoint;
 
     [SerializeField] private Slider hpBar;
+    [SerializeField] private TextMeshProUGUI playerName;
 
-    public override void OnStartServer()
-    {
-        SyncHpBar();
-    }
+    private UIManager uiManager;
 
     private void Awake()
     {
         Stats = new Dictionary<CharacterStat, float>();
-
         Stats[CharacterStat.HealthRegen] = 0f;
         Stats[CharacterStat.MaxHealth] = 10f;
         Stats[CharacterStat.BodyDamage] = 1f;
@@ -72,10 +72,22 @@ public class Player : NetworkBehaviour
         Stats[CharacterStat.Reload] = 0f;
         Stats[CharacterStat.MovementSpeed] = 3f;
 
+        UpgradeStats = new Dictionary<CharacterStat, int>();
+        UpgradeStats[CharacterStat.HealthRegen] = 0;
+        UpgradeStats[CharacterStat.MaxHealth] = 0;
+        UpgradeStats[CharacterStat.BodyDamage] = 0;
+        UpgradeStats[CharacterStat.BulletSpeed] = 0;
+        UpgradeStats[CharacterStat.BulletPenetration] = 0;
+        UpgradeStats[CharacterStat.BulletDamage] = 0;
+        UpgradeStats[CharacterStat.Reload] = 0;
+        UpgradeStats[CharacterStat.MovementSpeed] = 0;
+
         curHp = Stats[CharacterStat.MaxHealth];
 
         weapon = transform.GetChild(0).gameObject;
         shootPoint = transform.GetChild(0).GetChild(0).transform;
+
+        uiManager = GameObject.Find("UI Manager").GetComponent<UIManager>();
     }
 
     private void Start()
@@ -87,7 +99,13 @@ public class Player : NetworkBehaviour
         {
             CmdUpdateOtherPlayerSprites();
             StartCoroutine(RegenHealth(Stats[CharacterStat.HealthRegen]));
+            uiManager.player = this;
         }
+
+        playerName.text = "Player " + netId;
+        uiManager.StartGame(playerName.text);
+
+        GainExp(300);
     }
 
     private void Update()
@@ -289,18 +307,44 @@ public class Player : NetworkBehaviour
     private void LevelUp()
     {
         statPoint++;
-        exp = level * 10;
+        exp = 10 + level++ * 3;
 
-        // TODO : 스탯찍는 UI 띄우기
-        // 스탯 버튼을 눌러서 스탯을 찍었을 때, 남은 스탯포인트가 없으면 UI 치우기
+        uiManager.LevelUp.SetActive(true);
+        uiManager.UpdateLevel(level);
     }
 
     public void GainExp(int _exp)
     {
         curExp += _exp;
-        if (curExp > exp)
+        totalExp += _exp;
+
+        while (curExp >= exp)
         {
+            curExp -= exp;
             LevelUp();
+        }
+
+        uiManager.UpdateExp(curExp, exp);
+    }
+
+    public void UpgradeStat(CharacterStat stat)
+    {
+        UpgradeStats[stat]++;
+        Stats[stat] += stat switch
+        {
+            CharacterStat.HealthRegen => 1,
+            CharacterStat.MaxHealth => 2,
+            CharacterStat.BodyDamage => 0.2f,
+            CharacterStat.BulletSpeed => 0.2f,
+            CharacterStat.BulletPenetration => 1,
+            CharacterStat.BulletDamage => 0.2f,
+            CharacterStat.Reload => 0.2f,
+            CharacterStat.MovementSpeed => 0.2f
+        };
+
+        if (--statPoint <= 0)
+        {
+            uiManager.LevelUp.SetActive(false);
         }
     }
 }

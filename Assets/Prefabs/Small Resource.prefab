@@ -445,7 +445,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   maxHp: 3
-  exp: 1
+  exp: 3
   hpBar: {fileID: 8424163442609565046}
 --- !u!1 &7238415825502624897
 GameObject:
