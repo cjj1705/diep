@@ -11,22 +11,14 @@ using UnityEngine.UI;
 public class UIManager : NetworkBehaviour
 {
     [SerializeField] private GameObject canvas;
-    public GameObject LevelUp;
-    public GameObject Info;
+    [HideInInspector] public GameObject LevelUp;
+    [HideInInspector] public GameObject Info;
 
     public Player player;
-    private string localPlayerName;
 
-    private void Awake()
-    {
-        LevelUp = canvas.transform.GetChild(0).gameObject;
-        Info = canvas.transform.GetChild(1).gameObject;
-    }
-
-    public void StartGame(string _name)
+    public void StartGame()
     {
         Info.SetActive(true);
-        localPlayerName = _name;
     }
 
     public void UpgradeStat(int stat)

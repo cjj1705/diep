@@ -103,7 +103,7 @@ public class Player : NetworkBehaviour
         }
 
         playerName.text = "Player " + netId;
-        uiManager.StartGame(playerName.text);
+        uiManager.StartGame();
 
         GainExp(300);
     }
