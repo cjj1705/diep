@@ -312,8 +312,11 @@ public class Player : NetworkBehaviour
         statPoint++;
         exp = 10 + level++ * 3;
 
-        uiManager.LevelUp.SetActive(true);
-        uiManager.UpdateLevel(level);
+        if (isLocalPlayer)
+        {
+            uiManager.LevelUp.SetActive(true);
+            uiManager.UpdateLevel(level);
+        }
     }
 
     public void GainExp(int _exp)
@@ -327,7 +330,10 @@ public class Player : NetworkBehaviour
             LevelUp();
         }
 
-        uiManager.UpdateExp(curExp, exp);
+        if (isLocalPlayer)
+        {
+            uiManager.UpdateExp(curExp, exp);
+        }
     }
 
     public void UpgradeStat(CharacterStat stat)
