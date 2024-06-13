@@ -66,11 +66,11 @@ public class Player : NetworkBehaviour
         Stats[CharacterStat.HealthRegen] = 0f;
         Stats[CharacterStat.MaxHealth] = 10f;
         Stats[CharacterStat.BodyDamage] = 1f;
-        Stats[CharacterStat.BulletSpeed] = 4f;
+        Stats[CharacterStat.BulletSpeed] = 10f;
         Stats[CharacterStat.BulletPenetration] = 0f;
         Stats[CharacterStat.BulletDamage] = 1f;
         Stats[CharacterStat.Reload] = 0f;
-        Stats[CharacterStat.MovementSpeed] = 3f;
+        Stats[CharacterStat.MovementSpeed] = 5f;
 
         UpgradeStats = new Dictionary<CharacterStat, int>();
         UpgradeStats[CharacterStat.HealthRegen] = 0;
@@ -104,8 +104,6 @@ public class Player : NetworkBehaviour
 
         playerName.text = "Player " + netId;
         uiManager.StartGame();
-
-        GainExp(300);
     }
 
     private void Update()
@@ -118,6 +116,11 @@ public class Player : NetworkBehaviour
             Move();
             Rotate();
             Shoot();
+
+            if (Input.GetKeyDown(KeyCode.G))
+            {
+                GainExp(exp - curExp);
+            }
         }
     }
 
@@ -194,7 +197,7 @@ public class Player : NetworkBehaviour
 
     private void Shoot()
     {
-        if (Input.GetKeyDown(KeyCode.Mouse0))
+        if (Input.GetKey(KeyCode.Mouse0) || Input.GetKey(KeyCode.Space))
         {
             if (Time.time > curAttackTime)
             {
@@ -335,11 +338,11 @@ public class Player : NetworkBehaviour
             CharacterStat.HealthRegen => 1,
             CharacterStat.MaxHealth => 2,
             CharacterStat.BodyDamage => 0.2f,
-            CharacterStat.BulletSpeed => 0.2f,
+            CharacterStat.BulletSpeed => 1f,
             CharacterStat.BulletPenetration => 1,
             CharacterStat.BulletDamage => 0.2f,
-            CharacterStat.Reload => 0.2f,
-            CharacterStat.MovementSpeed => 0.2f
+            CharacterStat.Reload => 0.75f,
+            CharacterStat.MovementSpeed => 0.5f
         };
 
         if (--statPoint <= 0)
